@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="SonicRender: structured and time-grounded multi-event audio generation. Listen to benchmark examples, SceneMix comparisons, long-form scenes, dialects and languages.">
+  <meta name="theme-color" content="#F7F8FA">
+  <title>SonicRender — Structured, Time-Grounded Audio Scenes</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%232D3436'/%3E%3Ctext x='32' y='46' text-anchor='middle' font-family='Georgia' font-size='46' fill='%23FAFAF8'%3ES%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script src="data.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#complex">Skip to audio examples</a>
+<header class="paper-header" id="top">
+  <div class="shell">
+    <h1><span class="wordmark">SonicRender:</span> <span class="paper-subtitle">Structured and Time-Grounded Rendering of Multi-Event Audio Scene Generation</span></h1>
+    <p class="authors"><a href="https://github.com/caiyunrui">Yunrui Cai</a><sup>1,2,*</sup>, Xu Li<sup>2,†</sup>, Yan Rong<sup>2</sup>, Dingdong Wang<sup>1</sup>, Yucheng Zhou<sup>2</sup>, Xixin Wu<sup>1</sup>, Chen Zhang<sup>2</sup>, Zhiyong Wu<sup>3</sup>, Helen Meng<sup>1,†</sup></p>
+    <p class="affiliations"><span><sup>1</sup>The Chinese University of Hong Kong</span> <span><sup>2</sup>Kling AI</span> <span><sup>3</sup>Tsinghua University</span></p>
+    <p class="author-note"><sup>*</sup>Work done during an internship at Kling AI. <sup>†</sup>Corresponding authors.</p>
+    <div class="paper-actions"><button class="button" type="button" disabled title="Code link coming soon">Code</button><button class="button" type="button" disabled title="arXiv link coming soon">arXiv</button><a class="button primary" href="#complex">Examples</a></div>
+    <div class="paper-overview">
+    <div class="paper-abstract"><p><strong>Abstract.</strong> Generating a convincing mixture is only part of the challenge in unified audio generation: a complex request also specifies <em>which</em> events should occur, <em>who</em> produces them, and <em>when</em> they should be heard. We present SonicRender, a unified multi-event audio renderer that brings these constraints into a single generation process. Its Audio Scene Graph with Time (ASG-Time) binds persistent source identities to localized speech, music, ambience, and sound-effect events, together with their content, acoustic roles, relations, and timestamped windows. We further introduce AbsTime, which supplies the audio latent stream with absolute-frame coordinates and valid-canvas duration. Through joint text–audio attention and conditional flow matching, the renderer learns to realize structured, timed scenes as coherent mixtures. On the MMAG timestamp benchmark, SonicRender achieves speech/sound F1 scores of 0.79/0.60 using the original fractional-second timestamps, exceeding the strongest reported scores in our comparison. On our SceneMix evaluation, it attains 85.4% all-event recall, 83.9% window-hit rate, and 95.7% speaker accuracy. Subjective study further demonstrates significant improvements over all five comparison systems in both perceived audio quality and scene realization. Results across speech, general audio, music, multi-event load, and temporal-grounding analyses establish precise, composition-aware audio rendering within a unified generator.</p></div>
+    <figure class="teaser-figure"><a href="figs/teaser.png" target="_blank" rel="noopener"><img src="figs/teaser.png" alt="SonicRender teaser: structured and time-grounded audio scene generation"></a><figcaption><strong>Scene rendering.</strong> SonicRender brings event content, source identities and temporal windows into a unified generation process.</figcaption></figure>
+    </div>
+    <details class="paper-detail"><summary>Detail</summary>
+      <div class="paper-figure-grid">
+
+        <figure><a href="figs/asg.png" target="_blank" rel="noopener"><img src="figs/asg.png" alt="Audio Scene Graph with Time: sources, events and temporal constraints" loading="lazy"></a><figcaption><strong>ASG-Time.</strong> Sources describe persistent identities; events specify local content, acoustic roles and timing, with relations linking the scene components.</figcaption></figure>
+        <figure><a href="figs/method.png" target="_blank" rel="noopener"><img src="figs/method.png" alt="SonicRender architecture with ASG-Time conditioning and AbsTime" loading="lazy"></a><figcaption><strong>Method.</strong> Structured text conditioning and AbsTime meet through joint text–audio attention, guiding a conditional flow-matching renderer.</figcaption></figure>
+      </div>
+    </details>
+  </div>
+</header>
+<nav class="site-nav" aria-label="Page sections"><div class="shell nav-inner"><a class="nav-brand" href="#top">SonicRender</a><a href="#complex">Complex scenes</a><a href="#languages">Dialects & languages</a><a href="#comparison">SceneMix comparison</a><a href="#public">Public benchmarks</a></div></nav>
+<main class="shell">
+  <noscript><p>This audio gallery needs JavaScript. Enable it to load the selected examples.</p></noscript>
+  <section id="complex">
+    <div class="section-head"><div><h2>Complex scenes</h2></div><p>Multi-speaker dialogue, evolving music, sound effects and ambience, from short exchanges to long-form scenes.</p></div>
+    <div class="filters" data-filter-group="complex" aria-label="Filter complex scenes"><button type="button" class="active" data-value="all" aria-pressed="true">All <span>15</span></button><button type="button" data-value="Long-form" aria-pressed="false">Long-form <span>10</span></button><button type="button" data-value="Short scenes" aria-pressed="false">Short scenes <span>5</span></button></div>
+    <div id="complex-grid" class="sample-grid"></div>
+  </section>
+  <section id="languages">
+    <div class="section-head"><div><h2>Dialects & languages</h2></div><p>Regional Chinese speech, English accents and six additional languages, with full descriptions and original utterances.</p></div>
+    <div class="filters" data-filter-group="language" aria-label="Filter dialects and languages"><button type="button" class="active" data-value="all" aria-pressed="true">All <span>18</span></button><button type="button" data-value="Chinese varieties" aria-pressed="false">Chinese varieties</button><button type="button" data-value="English accents" aria-pressed="false">English accents</button><button type="button" data-value="More languages" aria-pressed="false">More languages</button></div>
+    <div id="language-grid" class="sample-grid"></div>
+  </section>
+  <section id="comparison">
+    <div class="section-head"><div><h2>SceneMix comparison</h2></div><p>Choose a scene and listen across models. Seven matched examples with repeated speakers and overlapping events.</p></div>
+    <div id="case-tabs" class="case-tabs" role="tablist" aria-label="SceneMix examples"></div>
+    <div id="comparison-panels"></div>
+    <details class="results"><summary>View SceneMix results</summary><figure><a href="figs/scenemix_table.png" target="_blank" rel="noopener"><img src="figs/scenemix_table.png" alt="Paper results on SceneMix" loading="lazy"></a><figcaption>Event, timing, speaker and subjective evaluation results</figcaption></figure></details>
+  </section>
+  <section id="public">
+    <div class="section-head"><div><h2>Public benchmarks</h2></div><p>Selected examples of speech, general audio, music and timestamped mixtures.</p></div>
+    <div class="section-tools"><div class="filters" data-filter-group="public" aria-label="Filter public benchmarks"><button type="button" class="active" data-value="all" aria-pressed="true">All <span>6</span></button><button type="button" data-value="TTS" aria-pressed="false">TTS</button><button type="button" data-value="TTA" aria-pressed="false">TTA</button><button type="button" data-value="TTM" aria-pressed="false">TTM</button><button type="button" data-value="MMAG" aria-pressed="false">MMAG time</button></div><span class="small-note">Headphones recommended</span></div>
+    <div class="sample-grid" id="public-grid"></div>
+    <details class="results"><summary>View quantitative results</summary><div class="result-grid"><figure><a href="figs/public_table.png" target="_blank" rel="noopener"><img src="figs/public_table.png" alt="Paper results for speech, audio and music generation" loading="lazy"></a><figcaption>Public benchmark results</figcaption></figure><figure><a href="figs/mmag_table.png" target="_blank" rel="noopener"><img src="figs/mmag_table.png" alt="Paper results on MMAG" loading="lazy"></a><figcaption>MMAG results</figcaption></figure></div></details>
+  </section>
+</main>
+<footer><div class="shell footer-inner"><div><strong>SonicRender</strong><p>Structured scenes. Persistent sources. Grounded time.</p></div><a href="#top">Back to top ↑</a></div></footer>
+<div id="playback-status" class="sr-only" role="status" aria-live="polite"></div>
+</body>
+</html>
