@@ -10,6 +10,130 @@
   <link rel="stylesheet" href="styles.css">
   <script src="data.js" defer></script>
   <script src="app.js" defer></script>
+
+  <!-- ===== Time-Grounded Visual Feedback Styles ===== -->
+  <style id="time-grounded-styles">
+    .sr-time-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 7px;
+      margin: 0 2px;
+      border-radius: 999px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82em;
+      font-weight: 600;
+      color: #1e293b;
+      background: #e2e8f0;
+      border: 1px solid #cbd5e1;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      vertical-align: baseline;
+      user-select: none;
+    }
+    .sr-time-chip::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #64748b;
+      transition: background 0.18s ease, transform 0.18s ease;
+    }
+    .sr-time-chip:hover {
+      background: #dbeafe;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
+    .sr-time-chip.is-active {
+      background: #2563eb;
+      border-color: #1d4ed8;
+      color: #ffffff;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22);
+      transform: translateY(-1px);
+    }
+    .sr-time-chip.is-active::before {
+      background: #93c5fd;
+      transform: scale(1.25);
+    }
+
+    /* AbsTime HUD above audio player */
+    .abstime-hud {
+      margin: 8px 0 6px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11.5px;
+      color: #475569;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .abstime-hud.is-playing {
+      border-color: #93c5fd;
+      background: #f0f7ff;
+      box-shadow: 0 1px 4px rgba(37, 99, 235, 0.08);
+    }
+    .abstime-hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+      flex-wrap: wrap;
+    }
+    .abstime-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .abstime-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+    .abstime-hud.is-playing .abstime-dot {
+      background: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    }
+    .abstime-coords {
+      color: #334155;
+      font-variant-numeric: tabular-nums;
+    }
+    .abstime-track {
+      position: relative;
+      height: 10px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .abstime-seg {
+      position: absolute;
+      top: 1px;
+      bottom: 1px;
+      background: rgba(37, 99, 235, 0.28);
+      border: 1px solid rgba(37, 99, 235, 0.45);
+      border-radius: 999px;
+      transition: background 0.15s ease;
+    }
+    .abstime-seg.is-active {
+      background: rgba(37, 99, 235, 0.75);
+      border-color: #1d4ed8;
+    }
+    .abstime-playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #dc2626;
+      left: 0%;
+      pointer-events: none;
+      z-index: 2;
+    }
+  </style>
 </head>
 <body>
 <a class="skip-link" href="#complex">Skip to audio examples</a>
@@ -61,5 +185,243 @@
 </main>
 <footer><div class="shell footer-inner"><div><strong>SonicRender</strong><p>Structured scenes. Persistent sources. Grounded time.</p></div><a href="#top">Back to top ↑</a></div></footer>
 <div id="playback-status" class="sr-only" role="status" aria-live="polite"></div>
+
+<!-- ===== Time-Grounded Visual Feedback Script ===== -->
+<script id="time-grounded-enhancer">
+(function () {
+  const LATENT_FPS = 44100 / 2048; // ~21.533 latent frames/s in SonicRender
+
+  function parseSec(str) {
+    if (!str) return NaN;
+    str = str.trim();
+    if (str.includes(':')) {
+      const parts = str.split(':').map(Number);
+      return parts.length === 2 ? parts[0] * 60 + parts[1] : parts[0] * 3600 + parts[1] * 60 + parts[2];
+    }
+    return parseFloat(str);
+  }
+
+  // Convert plain-text timestamps (e.g., "0-3 s", "00:00–00:03", "[0.5s - 2.1s]", "at 5s") into interactive chips
+  const TIME_REGEX = /(\[?\b(\d{1,2}:\d{2}(?:\.\d+)?)\s*(?:[-–—~]|to|\s+)\s*(\d{1,2}:\d{2}(?:\.\d+)?)\]?)|(\[?\b(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)?\s*(?:[-–—~]|to)\s*(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)\b\]?)|(\bat\s+(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)\b)/gi;
+
+  function decorateTimestampsInElement(root) {
+    if (!root) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const p = node.parentElement;
+        if (!p) return NodeFilter.FILTER_REJECT;
+        const tag = p.tagName;
+        if (['SCRIPT', 'STYLE', 'BUTTON', 'AUDIO', 'A', 'CODE'].includes(tag)) return NodeFilter.FILTER_REJECT;
+        if (p.closest('.sr-time-chip, .abstime-hud')) return NodeFilter.FILTER_REJECT;
+        TIME_REGEX.lastIndex = 0;
+        return TIME_REGEX.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    });
+
+    const textNodes = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+    textNodes.forEach((node) => {
+      const text = node.nodeValue;
+      TIME_REGEX.lastIndex = 0;
+      let lastIdx = 0;
+      let match;
+      const frag = document.createDocumentFragment();
+
+      while ((match = TIME_REGEX.exec(text)) !== null) {
+        if (match.index > lastIdx) {
+          frag.appendChild(document.createTextNode(text.slice(lastIdx, match.index)));
+        }
+        let start = NaN, end = NaN;
+        if (match[1]) {
+          start = parseSec(match[2]);
+          end = parseSec(match[3]);
+        } else if (match[4]) {
+          start = parseSec(match[5]);
+          end = parseSec(match[6]);
+        } else if (match[7]) {
+          start = parseSec(match[8]);
+          end = start + 1.0;
+        }
+
+        if (!isNaN(start) && !isNaN(end) && end >= start) {
+          const chip = document.createElement('span');
+          chip.className = 'sr-time-chip';
+          chip.dataset.start = start.toFixed(2);
+          chip.dataset.end = Math.max(end, start + 0.25).toFixed(2);
+          chip.title = `Click to seek to ${start.toFixed(1)}s`;
+          chip.textContent = match[0];
+          frag.appendChild(chip);
+        } else {
+          frag.appendChild(document.createTextNode(match[0]));
+        }
+        lastIdx = TIME_REGEX.lastIndex;
+      }
+      if (lastIdx < text.length) {
+        frag.appendChild(document.createTextNode(text.slice(lastIdx)));
+      }
+      node.parentNode.replaceChild(frag, node);
+    });
+  }
+
+  function findScopeForAudio(audio) {
+    const compPanel = audio.closest('#comparison-panels > *');
+    if (compPanel) return compPanel;
+    return audio.closest('article, .card, .sample-card, li, section > div > div') || audio.parentElement;
+  }
+
+  function collectChipsForScope(scope) {
+    if (!scope) return [];
+    // Also check existing custom elements if app.js sets data-start / data-time
+    return Array.from(scope.querySelectorAll('.sr-time-chip, [data-start][data-end]'));
+  }
+
+  function bindAudioEnhancement(audio) {
+    if (audio.dataset.abstimeBound === '1') return;
+    audio.dataset.abstimeBound = '1';
+
+    const scope = findScopeForAudio(audio);
+    decorateTimestampsInElement(scope);
+
+    const hud = document.createElement('div');
+    hud.className = 'abstime-hud';
+    hud.innerHTML = `
+      <div class="abstime-hud-top">
+        <span class="abstime-badge"><span class="abstime-dot"></span>AbsTime</span>
+        <span class="abstime-coords">t = 0.00s · Frame f = 0</span>
+      </div>
+      <div class="abstime-track" title="Click timeline to seek">
+        <div class="abstime-playhead"></div>
+      </div>
+    `;
+    audio.parentNode.insertBefore(hud, audio);
+
+    const coordsEl = hud.querySelector('.abstime-coords');
+    const trackEl = hud.querySelector('.abstime-track');
+    const playheadEl = hud.querySelector('.abstime-playhead');
+
+    function renderTrackSegments() {
+      const chips = collectChipsForScope(scope);
+      const dur = audio.duration && isFinite(audio.duration) ? audio.duration : 10;
+      trackEl.querySelectorAll('.abstime-seg').forEach((el) => el.remove());
+
+      const seen = new Set();
+      chips.forEach((chip) => {
+        const s = parseFloat(chip.dataset.start);
+        const e = parseFloat(chip.dataset.end);
+        const key = `${s}-${e}`;
+        if (isNaN(s) || isNaN(e) || seen.has(key)) return;
+        seen.add(key);
+
+        const seg = document.createElement('div');
+        seg.className = 'abstime-seg';
+        seg.dataset.start = s;
+        seg.dataset.end = e;
+        const leftPct = Math.min(100, Math.max(0, (s / dur) * 100));
+        const widthPct = Math.min(100 - leftPct, Math.max(2, ((e - s) / dur) * 100));
+        seg.style.left = `${leftPct}%`;
+        seg.style.width = `${widthPct}%`;
+        trackEl.appendChild(seg);
+      });
+    }
+
+    function updateVisuals() {
+      const t = audio.currentTime || 0;
+      const dur = audio.duration && isFinite(audio.duration) ? audio.duration : 0;
+      const frameIdx = Math.floor(t * LATENT_FPS);
+      const totalFrames = dur > 0 ? Math.floor(dur * LATENT_FPS) : '—';
+
+      if (dur > 0) {
+        playheadEl.style.left = `${Math.min(100, (t / dur) * 100)}%`;
+      }
+
+      const chips = collectChipsForScope(scope);
+      let activeCount = 0;
+      chips.forEach((chip) => {
+        const s = parseFloat(chip.dataset.start);
+        const e = parseFloat(chip.dataset.end);
+        const active = !audio.paused && t >= s && t <= e;
+        chip.classList.toggle('is-active', active);
+        if (active) activeCount++;
+      });
+
+      trackEl.querySelectorAll('.abstime-seg').forEach((seg) => {
+        const s = parseFloat(seg.dataset.start);
+        const e = parseFloat(seg.dataset.end);
+        seg.classList.toggle('is-active', !audio.paused && t >= s && t <= e);
+      });
+
+      coordsEl.textContent = `t = ${t.toFixed(2)}s · Frame f = ${frameIdx}/${totalFrames}` +
+        (activeCount > 0 ? ` · ${activeCount} active` : '');
+    }
+
+    trackEl.addEventListener('click', (e) => {
+      const rect = trackEl.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      if (audio.duration && isFinite(audio.duration)) {
+        audio.currentTime = ratio * audio.duration;
+        if (audio.paused) audio.play().catch(() => {});
+      }
+    });
+
+    audio.addEventListener('loadedmetadata', () => {
+      renderTrackSegments();
+      updateVisuals();
+    });
+    audio.addEventListener('play', () => {
+      hud.classList.add('is-playing');
+      renderTrackSegments();
+      updateVisuals();
+    });
+    audio.addEventListener('timeupdate', updateVisuals);
+    audio.addEventListener('seeked', updateVisuals);
+    audio.addEventListener('pause', () => {
+      hud.classList.remove('is-playing');
+      updateVisuals();
+    });
+    audio.addEventListener('ended', () => {
+      hud.classList.remove('is-playing');
+      updateVisuals();
+    });
+
+    if (audio.readyState >= 1) {
+      renderTrackSegments();
+      updateVisuals();
+    }
+  }
+
+  // Click on any timestamp chip seeks the nearest or currently active audio in that card/panel
+  document.addEventListener('click', (e) => {
+    const chip = e.target.closest('.sr-time-chip');
+    if (!chip) return;
+    const start = parseFloat(chip.dataset.start);
+    if (isNaN(start)) return;
+
+    const scope = chip.closest('#comparison-panels > *, article, .card, .sample-card, li, section') || document;
+    const audios = Array.from(scope.querySelectorAll('audio'));
+    const targetAudio = audios.find((a) => !a.paused) || audios[0];
+    if (targetAudio) {
+      targetAudio.currentTime = start;
+      targetAudio.play().catch(() => {});
+    }
+  });
+
+  function scanAll() {
+    document.querySelectorAll('#complex-grid, #language-grid, #comparison-panels, #public-grid').forEach((sec) => {
+      decorateTimestampsInElement(sec);
+      sec.querySelectorAll('audio').forEach(bindAudioEnhancement);
+    });
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    scanAll();
+    const observer = new MutationObserver(() => scanAll());
+    observer.observe(document.querySelector('main') || document.body, {
+      childList: true,
+      subtree: true
+    });
+  });
+})();
+</script>
 </body>
 </html>
