@@ -201,8 +201,11 @@
     return parseFloat(str);
   }
 
-  // Convert plain-text timestamps (e.g., "0-3 s", "00:00–00:03", "[0.5s - 2.1s]", "at 5s") into interactive chips
-  const TIME_REGEX = /(\[?\b(\d{1,2}:\d{2}(?:\.\d+)?)\s*(?:[-–—~]|to|\s+)\s*(\d{1,2}:\d{2}(?:\.\d+)?)\]?)|(\[?\b(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)?\s*(?:[-–—~]|to)\s*(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)\b\]?)|(\bat\s+(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)\b)/gi;
+  // Supports:
+  // 1) "00:00-00:03", "[00:04 00:07]", "00:00 to 00:03"
+  // 2) "Between 3.99 and 5.19 seconds", "from 1.5 to 4.0 seconds", "0-3 s", "2.5s–6.0s"
+  // 3) "at 5s", "at 3.5 seconds"
+  const TIME_REGEX = /(\[?\b(\d{1,2}:\d{2}(?:\.\d+)?)\s*(?:[-–—~]|to|and|\s+)\s*(\d{1,2}:\d{2}(?:\.\d+)?)\]?)|((?:(?:between|from)\s+)?\[?\b(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)?\s*(?:[-–—~]|to|and)\s*(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)\b\]?)|(\bat\s+(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)\b)/gi;
 
   function decorateTimestampsInElement(root) {
     if (!root) return;
@@ -249,7 +252,7 @@
           chip.className = 'sr-time-chip';
           chip.dataset.start = start.toFixed(2);
           chip.dataset.end = Math.max(end, start + 0.25).toFixed(2);
-          chip.title = `Click to seek to ${start.toFixed(1)}s`;
+          chip.title = `Click to seek to ${Math.round(start)}s`;
           chip.textContent = match[0];
           frag.appendChild(chip);
         } else {
@@ -264,15 +267,23 @@
     });
   }
 
+  // Strictly isolate each single-audio card so timestamps never bleed across sibling cards
   function findScopeForAudio(audio) {
     const compPanel = audio.closest('#comparison-panels > *');
     if (compPanel) return compPanel;
-    return audio.closest('article, .card, .sample-card, li, section > div > div') || audio.parentElement;
+    let cur = audio.parentElement;
+    while (cur && cur.parentElement && !cur.parentElement.matches('.sample-grid, main, body')) {
+      if (cur.parentElement.querySelectorAll('audio').length === 1) {
+        cur = cur.parentElement;
+      } else {
+        break;
+      }
+    }
+    return cur || audio.parentElement;
   }
 
   function collectChipsForScope(scope) {
     if (!scope) return [];
-    // Also check existing custom elements if app.js sets data-start / data-time
     return Array.from(scope.querySelectorAll('.sr-time-chip, [data-start][data-end]'));
   }
 
@@ -288,7 +299,7 @@
     hud.innerHTML = `
       <div class="abstime-hud-top">
         <span class="abstime-badge"><span class="abstime-dot"></span>AbsTime</span>
-        <span class="abstime-coords">t = 0.00s · Frame f = 0</span>
+        <span class="abstime-coords">t = 0s · Frame f = 0</span>
       </div>
       <div class="abstime-track" title="Click timeline to seek">
         <div class="abstime-playhead"></div>
@@ -330,19 +341,19 @@
       const dur = audio.duration && isFinite(audio.duration) ? audio.duration : 0;
       const frameIdx = Math.floor(t * LATENT_FPS);
       const totalFrames = dur > 0 ? Math.floor(dur * LATENT_FPS) : '—';
+      const secInt = Math.round(t);
+      const durLabel = dur > 0 ? ` / ${Math.round(dur)}s` : '';
 
       if (dur > 0) {
         playheadEl.style.left = `${Math.min(100, (t / dur) * 100)}%`;
       }
 
       const chips = collectChipsForScope(scope);
-      let activeCount = 0;
       chips.forEach((chip) => {
         const s = parseFloat(chip.dataset.start);
         const e = parseFloat(chip.dataset.end);
         const active = !audio.paused && t >= s && t <= e;
         chip.classList.toggle('is-active', active);
-        if (active) activeCount++;
       });
 
       trackEl.querySelectorAll('.abstime-seg').forEach((seg) => {
@@ -351,8 +362,7 @@
         seg.classList.toggle('is-active', !audio.paused && t >= s && t <= e);
       });
 
-      coordsEl.textContent = `t = ${t.toFixed(2)}s · Frame f = ${frameIdx}/${totalFrames}` +
-        (activeCount > 0 ? ` · ${activeCount} active` : '');
+      coordsEl.textContent = `t = ${secInt}s${durLabel} · Frame f = ${frameIdx}/${totalFrames}`;
     }
 
     trackEl.addEventListener('click', (e) => {
@@ -390,14 +400,13 @@
     }
   }
 
-  // Click on any timestamp chip seeks the nearest or currently active audio in that card/panel
   document.addEventListener('click', (e) => {
     const chip = e.target.closest('.sr-time-chip');
     if (!chip) return;
     const start = parseFloat(chip.dataset.start);
     if (isNaN(start)) return;
 
-    const scope = chip.closest('#comparison-panels > *, article, .card, .sample-card, li, section') || document;
+    const scope = chip.closest('#comparison-panels > *') || findScopeForAudio(chip);
     const audios = Array.from(scope.querySelectorAll('audio'));
     const targetAudio = audios.find((a) => !a.paused) || audios[0];
     if (targetAudio) {
