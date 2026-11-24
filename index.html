@@ -145,14 +145,14 @@
     <p class="author-note"><sup>*</sup>Work done during an internship at Kling AI. <sup>†</sup>Corresponding authors.</p>
     <div class="paper-actions"><a class="button" href="https://github.com/caiyunrui/SonicRender" target="_blank" rel="noopener noreferrer">Project</a><a class="button" href="https://arxiv.org/abs/2611.30241" target="_blank" rel="noopener noreferrer">arXiv</a><a class="button primary" href="#complex">Examples</a></div>
     <div class="paper-overview">
-    <div class="paper-abstract"><p><strong>Abstract.</strong> Generating a convincing mixture is only part of the challenge in unified audio generation: a complex request also specifies <em>which</em> events should occur, <em>who</em> produces them, and <em>when</em> they should be heard. We present SonicRender, a unified multi-event audio renderer that brings these constraints into a single generation process. Its Audio Scene Graph with Time (ASG-Time) binds persistent source identities to localized speech, music, ambience, and sound-effect events, together with their content, acoustic roles, relations, and timestamped windows. We further introduce AbsTime, which supplies the audio latent stream with absolute-frame coordinates and valid-canvas duration. Through joint text–audio attention and conditional flow matching, the renderer learns to realize structured, timed scenes as coherent mixtures. On the MMAG timestamp benchmark, SonicRender achieves speech/sound F1 scores of 0.79/0.60 using the original fractional-second timestamps, exceeding the strongest reported scores in our comparison. On our SceneMix evaluation, it attains 85.4% all-event recall, 83.9% window-hit rate, and 95.7% speaker accuracy. Subjective study further demonstrates significant improvements over all five comparison systems in both perceived audio quality and scene realization. Results across speech, general audio, music, multi-event load, and temporal-grounding analyses establish precise, composition-aware audio rendering within a unified generator.</p></div>
+    <div class="paper-abstract"><p><strong>Abstract.</strong> While unified audio generators can synthesize speech, music, and sound effects within a single model, producing a plausible mixture is only part of the challenge: a complex scene request also specifies which events occur, who produces them, and when they are heard. To satisfy these compositional constraints in a single generation pass, we present SonicRender, a unified multi-event audio renderer. Its Temporal Audio Scene Graph (TASG) binds persistent source identities to localized speech, music, ambience, and sound-effect events, together with their content, acoustic roles, relations, and timestamped windows. We further introduce AbsTime, which supplies the audio latent stream with absolute-frame coordinates and valid-canvas duration. Through joint text-audio attention and conditional flow matching, the renderer learns to realize structured, timed scenes as coherent mixtures. On the MMAG timestamp benchmark, SonicRender achieves speech/sound F1 scores of 0.79/0.60, exceeding the strongest reported scores in our comparison. On our SceneMix evaluation, it attains 85.4% all-event recall, 83.9% window-hit rate, and 95.7% speaker accuracy. Subjective study further demonstrates significant improvements over all five comparison systems in both perceived audio quality and scene realization. Results across speech, general audio, music, multi-event load, and temporal-grounding analyses establish precise, composition-aware audio rendering within a unified generator. Demo page: <a href="https://caiyunrui.github.io/SonicRender/">https://caiyunrui.github.io/SonicRender</a>.</p></div>
     <figure class="teaser-figure"><a href="figs/teaser.png" target="_blank" rel="noopener"><img src="figs/teaser.png" alt="SonicRender teaser: structured and time-grounded audio scene generation"></a><figcaption><strong>Scene rendering.</strong> SonicRender brings event content, source identities and temporal windows into a unified generation process.</figcaption></figure>
     </div>
     <details class="paper-detail"><summary>Detail</summary>
       <div class="paper-figure-grid">
 
-        <figure><a href="figs/asg.png" target="_blank" rel="noopener"><img src="figs/asg.png" alt="Audio Scene Graph with Time: sources, events and temporal constraints" loading="lazy"></a><figcaption><strong>ASG-Time.</strong> Sources describe persistent identities; events specify local content, acoustic roles and timing, with relations linking the scene components.</figcaption></figure>
-        <figure><a href="figs/method.png" target="_blank" rel="noopener"><img src="figs/method.png" alt="SonicRender architecture with ASG-Time conditioning and AbsTime" loading="lazy"></a><figcaption><strong>Method.</strong> Structured text conditioning and AbsTime meet through joint text–audio attention, guiding a conditional flow-matching renderer.</figcaption></figure>
+        <figure><a href="figs/asg.png" target="_blank" rel="noopener"><img src="figs/asg.png" alt="Temporal Audio Scene Graph: sources, events and temporal constraints" loading="lazy"></a><figcaption><strong>TASG.</strong> Sources describe persistent identities; events specify local content, acoustic roles and timing, with relations linking the scene components.</figcaption></figure>
+        <figure><a href="figs/method.png" target="_blank" rel="noopener"><img src="figs/method.png" alt="SonicRender architecture with TASG conditioning and AbsTime" loading="lazy"></a><figcaption><strong>Method.</strong> Structured text conditioning and AbsTime meet through joint text–audio attention, guiding a conditional flow-matching renderer.</figcaption></figure>
       </div>
     </details>
   </div>
@@ -439,7 +439,30 @@
     });
   }
 
+  // Keep dynamically rendered terminology consistent with the paper.
+  function normalizeSceneGraphTerminology(root) {
+    const rename = (text) => text
+      .replace(/\bAudio Scene Graph with Time\b/gi, 'Temporal Audio Scene Graph')
+      .replace(/\bASG[-\s]+Time\b/gi, 'TASG');
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.parentElement.closest('script, style, audio')) continue;
+      const updated = rename(node.nodeValue);
+      if (updated !== node.nodeValue) node.nodeValue = updated;
+    }
+    root.querySelectorAll('[aria-label], [title], [alt]').forEach((el) => {
+      for (const attr of ['aria-label', 'title', 'alt']) {
+        if (!el.hasAttribute(attr)) continue;
+        const original = el.getAttribute(attr);
+        const updated = rename(original);
+        if (updated !== original) el.setAttribute(attr, updated);
+      }
+    });
+  }
+
   function scanAll() {
+    normalizeSceneGraphTerminology(document.querySelector('main') || document.body);
     renameComparisonModels();
     document.querySelectorAll('#complex-grid, #language-grid, #comparison-panels, #public-grid').forEach((sec) => {
       decorateTimestampsInElement(sec);
