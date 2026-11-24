@@ -140,10 +140,10 @@
 <header class="paper-header" id="top">
   <div class="shell">
     <h1><span class="wordmark">SonicRender:</span> <span class="paper-subtitle">Structured and Time-Grounded Rendering of Multi-Event Audio Scene Generation</span></h1>
-    <p class="authors"><a href="https://github.com/caiyunrui">Yunrui Cai</a><sup>1,2,*</sup>, Xu Li<sup>2,†</sup>, Yan Rong<sup>2</sup>, Dingdong Wang<sup>1</sup>, Yucheng Zhou<sup>2</sup>, Xixin Wu<sup>1</sup>, Chen Zhang<sup>2</sup>, Zhiyong Wu<sup>3</sup>, Helen Meng<sup>1,†</sup></p>
-    <p class="affiliations"><span><sup>1</sup>The Chinese University of Hong Kong</span> <span><sup>2</sup>Kling AI</span> <span><sup>3</sup>Tsinghua University</span></p>
+    <p class="authors"><a href="https://github.com/caiyunrui">Yunrui Cai</a><sup>1,2,*</sup>, Xu Li<sup>1,†</sup>, Yan Rong<sup>1</sup>, Dingdong Wang<sup>2</sup>, Yucheng Zhou<sup>1</sup>, Xixin Wu<sup>2</sup>, Chen Zhang<sup>1</sup>, Zhiyong Wu<sup>3</sup>, Helen Meng<sup>2,†</sup></p>
+    <p class="affiliations"><span><sup>1</sup>Kling AI</span> <span><sup>2</sup>CUHK</span> <span><sup>3</sup>Tsinghua University</span></p>
     <p class="author-note"><sup>*</sup>Work done during an internship at Kling AI. <sup>†</sup>Corresponding authors.</p>
-    <div class="paper-actions"><button class="button" type="button" disabled title="Code link coming soon">Code</button><button class="button" type="button" disabled title="arXiv link coming soon">arXiv</button><a class="button primary" href="#complex">Examples</a></div>
+    <div class="paper-actions"><a class="button" href="https://github.com/caiyunrui/SonicRender" target="_blank" rel="noopener noreferrer">Project</a><a class="button" href="https://arxiv.org/abs/2611.30241" target="_blank" rel="noopener noreferrer">arXiv</a><a class="button primary" href="#complex">Examples</a></div>
     <div class="paper-overview">
     <div class="paper-abstract"><p><strong>Abstract.</strong> Generating a convincing mixture is only part of the challenge in unified audio generation: a complex request also specifies <em>which</em> events should occur, <em>who</em> produces them, and <em>when</em> they should be heard. We present SonicRender, a unified multi-event audio renderer that brings these constraints into a single generation process. Its Audio Scene Graph with Time (ASG-Time) binds persistent source identities to localized speech, music, ambience, and sound-effect events, together with their content, acoustic roles, relations, and timestamped windows. We further introduce AbsTime, which supplies the audio latent stream with absolute-frame coordinates and valid-canvas duration. Through joint text–audio attention and conditional flow matching, the renderer learns to realize structured, timed scenes as coherent mixtures. On the MMAG timestamp benchmark, SonicRender achieves speech/sound F1 scores of 0.79/0.60 using the original fractional-second timestamps, exceeding the strongest reported scores in our comparison. On our SceneMix evaluation, it attains 85.4% all-event recall, 83.9% window-hit rate, and 95.7% speaker accuracy. Subjective study further demonstrates significant improvements over all five comparison systems in both perceived audio quality and scene realization. Results across speech, general audio, music, multi-event load, and temporal-grounding analyses establish precise, composition-aware audio rendering within a unified generator.</p></div>
     <figure class="teaser-figure"><a href="figs/teaser.png" target="_blank" rel="noopener"><img src="figs/teaser.png" alt="SonicRender teaser: structured and time-grounded audio scene generation"></a><figcaption><strong>Scene rendering.</strong> SonicRender brings event content, source identities and temporal windows into a unified generation process.</figcaption></figure>
@@ -415,7 +415,32 @@
     }
   });
 
+  // Rename comparison labels without changing model IDs or audio file paths.
+  function renameComparisonModels() {
+    const root = document.getElementById('comparison-panels');
+    if (!root) return;
+    const rename = (text) => text
+      .replace(/\bbaseline\b/gi, 'Natural Language')
+      .replace(/\bming[-\s]+omni[-\s]+tts(?:[-\s]+16\.8b)?\b/gi, 'Ming-Omni-TTS-16.8B');
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.parentElement.closest('script, style, audio, code')) continue;
+      const updated = rename(node.nodeValue);
+      if (updated !== node.nodeValue) node.nodeValue = updated;
+    }
+    root.querySelectorAll('[aria-label], [title]').forEach((el) => {
+      for (const attr of ['aria-label', 'title']) {
+        if (!el.hasAttribute(attr)) continue;
+        const original = el.getAttribute(attr);
+        const updated = rename(original);
+        if (updated !== original) el.setAttribute(attr, updated);
+      }
+    });
+  }
+
   function scanAll() {
+    renameComparisonModels();
     document.querySelectorAll('#complex-grid, #language-grid, #comparison-panels, #public-grid').forEach((sec) => {
       decorateTimestampsInElement(sec);
       sec.querySelectorAll('audio').forEach(bindAudioEnhancement);
@@ -432,5 +457,7 @@
   });
 })();
 </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"7939e04a4baf43c8b86a560f74aac60e","spa":2}' crossorigin="anonymous"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"b2074e7888b746fe9fbbc15492b4c3d4","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
